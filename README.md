@@ -7,3 +7,6 @@
 ## Datasets
 
 [Landslide Points of North Carolina 09/20/2024](https://www.nconemap.gov/datasets/ncdenr::landslide-points-of-north-carolina-09-20-2024/explore)
+
+
+For simplicity on Python package handling, all Notebooks are put at root folder.
