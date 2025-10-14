@@ -10,3 +10,6 @@
 
 
 For simplicity on Python package handling, all Notebooks are put at root folder.
+
+
+https://github.com/iarai/Landslide4Sense-2022

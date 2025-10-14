@@ -1,6 +1,8 @@
 # Data
 *.gpkg
 
+data/
+
 # Mac system files
 .DS_Store
 
