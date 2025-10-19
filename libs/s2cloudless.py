@@ -110,7 +110,7 @@ class S2Cloudless():
         cloud_transform = img.select('cloud_transform')
 
         # Create a geemap Map object centered on AOI.
-        m = geemap.Map()
+        m = geemap.Map(ee_initialize=False)
         m.centerObject(aoi, 12)
 
         # Add layers
@@ -138,7 +138,7 @@ class S2Cloudless():
         #                      .map(self.apply_cld_shdw_mask)
         #                      .median())
         col = self.cloud_free_col(aoi, start_date, end_date, buffer=buffer, cloud_filter=cloud_filter)
-        m = geemap.Map()
+        m = geemap.Map(ee_initialize=False)
         m.centerObject(aoi, 12)
         m.addLayer(col, {'bands': ['B4', 'B3', 'B2'], 'min': 0, 'max': 2500, 'gamma': 1.1}, 'S2 image')
         return m
