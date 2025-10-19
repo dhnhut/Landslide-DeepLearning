@@ -5,8 +5,8 @@ flowchart TD
         P1 --> P1_pre["Pre-Train ✅"]
         P1_pre --> P1_Pre_data{"Data ✅"} 
         P1_Pre_data --> P1_GDCLD[("GDCLD (Too Large) ❌")] 
-        P1_Pre_data --> P1_Landslide4Sense[("Landslide4Sense-2022 ✅")] 
-        
+        P1_Pre_data --> P1_Landslide4Sense[("Landslide4Sense-2022 ✅")]
+        P1_Landslide4Sense --> LightVersion[("Landslide4Sense-LightVersion ✅")]
 
         A --> P2["Detect Landslide using Change Monitoring ✅"]
 
