@@ -3,6 +3,8 @@ import os
 import pandas as pd
 import urllib.request
 import logging
+import zipfile
+import tempfile
 
 def mask_s2_clouds(image):
   """Masks clouds in a Sentinel-2 image using the QA band.
@@ -60,22 +62,28 @@ def get_sentinel_image_thumbnail(
         event['dateoccurence'].date() + pd.Timedelta(days=end_date_offset)
     ).strftime("%Y-%m-%d")
     
-    filename = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}.tif"
-    filename_with_marker = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}_marker.png"
+    filename = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}"
+    filename_tif = f"{filename}.tif"
+    filename_png = f"{filename}.png"
 
     # ensure output directory exists and save thumbnail
     os.makedirs(out_dir, exist_ok=True)
     
-    imgs_dir = os.path.join(out_dir, 'images')
+    img_dir = os.path.join(out_dir, 'tif')
+    rgb_dir = os.path.join(out_dir, 'rgb')
     marks_dir = os.path.join(out_dir, 'marks')
-    os.makedirs(imgs_dir, exist_ok=True)
+    os.makedirs(img_dir, exist_ok=True)
+    os.makedirs(rgb_dir, exist_ok=True)
     os.makedirs(marks_dir, exist_ok=True)
 
-    filepath = os.path.join(imgs_dir, filename)
-    filepath_with_marker = os.path.join(marks_dir, filename_with_marker)
-    if os.path.exists(filepath) and os.path.exists(filepath_with_marker):
-        return filepath, filepath_with_marker
-    
+    filepath_tif = os.path.join(img_dir, filename_tif)
+    filepath_rgb = os.path.join(rgb_dir, filename_png)
+    filepath_with_marker = os.path.join(marks_dir, filename_png)
+    if os.path.exists(filepath_tif) and \
+        os.path.exists(filepath_rgb) and \
+        os.path.exists(filepath_with_marker):
+        return filepath_tif, filepath_rgb, filepath_with_marker
+
     image = s2cloudless.cloud_free_col(_aoi, _start_date, _end_date, buffer=buffer, cloud_filter=cloud_filter)
 
     # Select only RGB bands to match the point image
@@ -96,15 +104,47 @@ def get_sentinel_image_thumbnail(
         'formatOptions': {'cloudOptimized': True}
     }
     url = image.getDownloadURL(export_params)
+    url_rgb = rgb_image.getThumbURL({**vis_params, **thumb_params})
     url_with_marker = image_with_marker.getThumbURL({**vis_params, **thumb_params})
 
     try:
-        urllib.request.urlretrieve(url, filepath)
+        # Download the ZIP file to a temporary location
+        zip_filepath = filepath_tif + '.zip'
+        urllib.request.urlretrieve(url, zip_filepath)
+        
+        # Extract the GeoTIFF from the ZIP archive
+        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+            # Earth Engine ZIP contains a single .tif file
+            tif_files = [f for f in zip_ref.namelist() if f.endswith('.tif')]
+            if not tif_files:
+                print(f"No .tif file found in ZIP for index {idx}")
+                os.remove(zip_filepath)
+                return None, None, None
+            
+            # Extract the first (and typically only) .tif file
+            tif_filename = tif_files[0]
+            zip_ref.extract(tif_filename, img_dir)
+            
+            # Rename the extracted file to our desired filename
+            extracted_path = os.path.join(img_dir, tif_filename)
+            if extracted_path != filepath_tif:
+                os.rename(extracted_path, filepath_tif)
+
+        # Clean up the ZIP file
+        os.remove(zip_filepath)
+
+        urllib.request.urlretrieve(url_rgb, filepath_rgb)
+
+        # Download the marker image
         urllib.request.urlretrieve(url_with_marker, filepath_with_marker)
+        
         # update filename to the saved path for display
-        filename = filepath
+        filename = filepath_tif
     except Exception as e:
         print(f"Failed to download thumbnail for index {idx}: {e}")
-        return None, None
+        # Clean up partial files if they exist
+        if os.path.exists(zip_filepath):
+            os.remove(zip_filepath)
+        return None, None, None
 
-    return filepath, filepath_with_marker
+    return filepath_tif, filepath_rgb, filepath_with_marker
