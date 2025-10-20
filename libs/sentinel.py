@@ -63,26 +63,25 @@ def get_sentinel_image_thumbnail(
     ).strftime("%Y-%m-%d")
     
     filename = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}"
-    filename_tif = f"{filename}.tif"
+    # filename_tif = f"{filename}.tif"
     filename_png = f"{filename}.png"
 
     # ensure output directory exists and save thumbnail
     os.makedirs(out_dir, exist_ok=True)
-    
-    img_dir = os.path.join(out_dir, 'tif')
+
+    # tif_dir = os.path.join(out_dir, 'tif')
     rgb_dir = os.path.join(out_dir, 'rgb')
     marks_dir = os.path.join(out_dir, 'marks')
-    os.makedirs(img_dir, exist_ok=True)
+    # os.makedirs(tif_dir, exist_ok=True)
     os.makedirs(rgb_dir, exist_ok=True)
     os.makedirs(marks_dir, exist_ok=True)
 
-    filepath_tif = os.path.join(img_dir, filename_tif)
+    # filepath_tif = os.path.join(tif_dir, filename_tif)
     filepath_rgb = os.path.join(rgb_dir, filename_png)
     filepath_with_marker = os.path.join(marks_dir, filename_png)
-    if os.path.exists(filepath_tif) and \
-        os.path.exists(filepath_rgb) and \
+    if os.path.exists(filepath_rgb) and \
         os.path.exists(filepath_with_marker):
-        return filepath_tif, filepath_rgb, filepath_with_marker
+        return filepath_rgb, filepath_with_marker
 
     image = s2cloudless.cloud_free_col(_aoi, _start_date, _end_date, buffer=buffer, cloud_filter=cloud_filter)
 
@@ -97,41 +96,42 @@ def get_sentinel_image_thumbnail(
     image_with_marker = rgb_image.blend(point_image)
     
     # url = rgb_image.getThumbURL({**vis_params, **thumb_params})
-    export_params = {
-        'scale': 10,  # 10m resolution for Sentinel-2
-        'region': _aoi,
-        'fileFormat': 'GeoTIFF',
-        'formatOptions': {'cloudOptimized': True}
-    }
-    url = image.getDownloadURL(export_params)
+    # export_params = {
+    #     'scale': 10,  # 10m resolution for Sentinel-2
+    #     'region': _aoi,
+    #     'bands': ['B1', 'B2', 'B3', 'B4', 'B5', 'B6', 'B7', 'B8', 'B8A', 'B9', 'B11', 'B12'],
+    #     'fileFormat': 'GeoTIFF',
+    #     'formatOptions': {'cloudOptimized': True}
+    # }
+    # url_tif = image.getDownloadURL(export_params)
     url_rgb = rgb_image.getThumbURL({**vis_params, **thumb_params})
     url_with_marker = image_with_marker.getThumbURL({**vis_params, **thumb_params})
 
+    # Download the ZIP file to a temporary location
+    # zip_filepath = filepath_tif + '.zip'
     try:
-        # Download the ZIP file to a temporary location
-        zip_filepath = filepath_tif + '.zip'
-        urllib.request.urlretrieve(url, zip_filepath)
+        # urllib.request.urlretrieve(url, zip_filepath)
         
-        # Extract the GeoTIFF from the ZIP archive
-        with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
-            # Earth Engine ZIP contains a single .tif file
-            tif_files = [f for f in zip_ref.namelist() if f.endswith('.tif')]
-            if not tif_files:
-                print(f"No .tif file found in ZIP for index {idx}")
-                os.remove(zip_filepath)
-                return None, None, None
+        # # Extract the GeoTIFF from the ZIP archive
+        # with zipfile.ZipFile(zip_filepath, 'r') as zip_ref:
+        #     # Earth Engine ZIP contains a single .tif file
+        #     tif_files = [f for f in zip_ref.namelist() if f.endswith('.tif')]
+        #     if not tif_files:
+        #         print(f"No .tif file found in ZIP for index {idx}")
+        #         os.remove(zip_filepath)
+        #         return None, None, None
             
-            # Extract the first (and typically only) .tif file
-            tif_filename = tif_files[0]
-            zip_ref.extract(tif_filename, img_dir)
+        #     # Extract the first (and typically only) .tif file
+        #     tif_filename = tif_files[0]
+        #     zip_ref.extract(tif_filename, tif_dir)
             
-            # Rename the extracted file to our desired filename
-            extracted_path = os.path.join(img_dir, tif_filename)
-            if extracted_path != filepath_tif:
-                os.rename(extracted_path, filepath_tif)
+        #     # Rename the extracted file to our desired filename
+        #     extracted_path = os.path.join(tif_dir, tif_filename)
+        #     if extracted_path != filepath_tif:
+        #         os.rename(extracted_path, filepath_tif)
 
-        # Clean up the ZIP file
-        os.remove(zip_filepath)
+        # # Clean up the ZIP file
+        # os.remove(zip_filepath)
 
         urllib.request.urlretrieve(url_rgb, filepath_rgb)
 
@@ -139,12 +139,12 @@ def get_sentinel_image_thumbnail(
         urllib.request.urlretrieve(url_with_marker, filepath_with_marker)
         
         # update filename to the saved path for display
-        filename = filepath_tif
+        # filename = filepath_tif
     except Exception as e:
         print(f"Failed to download thumbnail for index {idx}: {e}")
         # Clean up partial files if they exist
-        if os.path.exists(zip_filepath):
-            os.remove(zip_filepath)
-        return None, None, None
+        # if os.path.exists(zip_filepath):
+        #     os.remove(zip_filepath)
+        return None, None
 
-    return filepath_tif, filepath_rgb, filepath_with_marker
+    return filepath_rgb, filepath_with_marker
