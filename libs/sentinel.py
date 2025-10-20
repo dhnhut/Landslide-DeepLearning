@@ -1,4 +1,9 @@
 
+import os
+import pandas as pd
+import urllib.request
+import logging
+
 def mask_s2_clouds(image):
   """Masks clouds in a Sentinel-2 image using the QA band.
 
@@ -22,3 +27,84 @@ def mask_s2_clouds(image):
   )
 
   return image.updateMask(mask).divide(10000)
+
+def get_sentinel_image_thumbnail(
+    ee,
+    s2cloudless,
+    event,
+    idx,
+    out_dir,
+    start_date_offset=60,
+    end_date_offset=0,
+    buffer=50,
+    cloud_filter=30,
+    
+):
+    vis_params = {'bands': ['B4', 'B3', 'B2'], 'min': 0, 'max': 2500, 'gamma': 1.1}
+
+    _point = event.geometry.centroid
+    _lon = _point.x
+    _lat = _point.y
+    _point_geom = ee.Geometry.Point(_lon, _lat)
+    _aoi = _point_geom.buffer(100)
+    thumb_params = {
+        'dimensions': 256,
+        'region': _aoi,
+        'format': 'png',
+    }
+    _start_date = (
+        event['dateoccurence'].date() - pd.Timedelta(days=start_date_offset)
+    ).strftime("%Y-%m-%d")
+    
+    _end_date = (
+        event['dateoccurence'].date() - pd.Timedelta(days=end_date_offset)
+    ).strftime("%Y-%m-%d")
+    
+    filename = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}.tif"
+    filename_with_marker = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}_marker.png"
+
+    # ensure output directory exists and save thumbnail
+    os.makedirs(out_dir, exist_ok=True)
+    
+    imgs_dir = os.path.join(out_dir, 'images')
+    marks_dir = os.path.join(out_dir, 'marks')
+    os.makedirs(imgs_dir, exist_ok=True)
+    os.makedirs(marks_dir, exist_ok=True)
+
+    filepath = os.path.join(imgs_dir, filename)
+    filepath_with_marker = os.path.join(marks_dir, filename_with_marker)
+    if os.path.exists(filepath) and os.path.exists(filepath_with_marker):
+        return filepath, filepath_with_marker
+    
+    image = s2cloudless.cloud_free_col(_aoi, _start_date, _end_date, buffer=buffer, cloud_filter=cloud_filter)
+
+    # Select only RGB bands to match the point image
+    rgb_image = image.select(['B4', 'B3', 'B2'])
+    
+    # Create a red point marker
+    point_feature = ee.FeatureCollection([ee.Feature(_point_geom)])
+    point_image = point_feature.style(**{'color': 'red', 'pointSize': 5, 'width': 2})
+    
+    # Blend the point marker with the RGB satellite image
+    image_with_marker = rgb_image.blend(point_image)
+    
+    # url = rgb_image.getThumbURL({**vis_params, **thumb_params})
+    export_params = {
+        'scale': 10,  # 10m resolution for Sentinel-2
+        'region': _aoi,
+        'fileFormat': 'GeoTIFF',
+        'formatOptions': {'cloudOptimized': True}
+    }
+    url = image.getDownloadURL(export_params)
+    url_with_marker = image_with_marker.getThumbURL({**vis_params, **thumb_params})
+
+    try:
+        urllib.request.urlretrieve(url, filepath)
+        urllib.request.urlretrieve(url_with_marker, filepath_with_marker)
+        # update filename to the saved path for display
+        filename = filepath
+    except Exception as e:
+        print(f"Failed to download thumbnail for index {idx}: {e}")
+        return None, None
+
+    return filepath, filepath_with_marker
