@@ -53,11 +53,11 @@ def get_sentinel_image_thumbnail(
         'format': 'png',
     }
     _start_date = (
-        event['dateoccurence'].date() - pd.Timedelta(days=start_date_offset)
+        event['dateoccurence'].date() + pd.Timedelta(days=start_date_offset)
     ).strftime("%Y-%m-%d")
     
     _end_date = (
-        event['dateoccurence'].date() - pd.Timedelta(days=end_date_offset)
+        event['dateoccurence'].date() + pd.Timedelta(days=end_date_offset)
     ).strftime("%Y-%m-%d")
     
     filename = f"{idx}_{_lon}_{_lat}_{_start_date}_{_end_date}.tif"
