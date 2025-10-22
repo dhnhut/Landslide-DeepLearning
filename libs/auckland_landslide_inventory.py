@@ -45,3 +45,7 @@ def fetch_data(output_dir, num_records=999999999, batch_size=2000):
             if not gdf.empty:
                 gdf.to_file(f"{output_dir}/inventory.gpkg", driver='GPKG', layer=layer_name, mode='a')
                 gdf.to_file(f"{output_dir}/inventory_{layer_name}.geojson", driver='GeoJSON')
+            else:
+                print(f"No more records to fetch for layer {layer_name}.")
+                return None
+    print("Data fetching completed.")
