@@ -5,17 +5,16 @@ import geopandas as gpd
 
 # Source https://www.arcgis.com/home/item.html?id=f7ca84d9c1524f99ab94e03b547cd143#data
 # Currently, there are total 146,813 records
-def fetch_data(output_filepath, num_records=999999999, batch_size=2000):
+def fetch_data(output_dir, num_records=999999999, batch_size=2000):
     '''
     Fetch Auckland landslide inventory data from ArcGIS REST API and save to a GeoPackage file.
     Args:
-        output_filepath (str): Path to save the GeoPackage file.
+        output_dir (str): Path to save the GeoPackage file.
         num_records (int): Total number of records to fetch. Default is a large number to fetch all available records.
         batch_size (int): Number of records to fetch per request. Default is 2000.
     '''
 
-    if os.path.exists(output_filepath):
-        raise FileExistsError(f"File '{output_filepath}' already exists and is not empty. Skipping download.")
+    os.makedirs(output_dir, exist_ok=True)
 
     for start in range(0, num_records, batch_size):
         
@@ -38,7 +37,8 @@ def fetch_data(output_filepath, num_records=999999999, batch_size=2000):
         gdf = gpd.GeoDataFrame.from_features(geojson_data["features"])
 
         if not gdf.empty:
-            gdf.to_file(output_filepath, driver='GPKG', layer='landslides', mode='a')
+            gdf.to_file(f"{output_dir}/raw_data.gpkg", driver='GPKG', layer='landslides', mode='a')
+            gdf.to_file(f"{output_dir}/raw_data.geojson", driver='GeoJSON')
         else:
             print("Warning: No features returned; skipping shapefile write.")
             break
