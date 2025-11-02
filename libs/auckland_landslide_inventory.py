@@ -2,12 +2,12 @@ import json
 import os
 import urllib.request
 import geopandas as gpd
-
+    
 def layers():
     return {
-        "lines": 0,
-        "polygons": 1,
-        "points": 2
+        "points": 0,
+        "lines": 1,
+        "polygons": 2,
     }
 
 # Source https://www.arcgis.com/home/item.html?id=f7ca84d9c1524f99ab94e03b547cd143#data
@@ -23,10 +23,11 @@ def fetch_data(output_dir, num_records=999999999, batch_size=2000):
 
     os.makedirs(output_dir, exist_ok=True)
 
-    for start in range(0, num_records, batch_size):
+    for layer_name, layer_id in layers().items():
         geojson_data = {}
 
-        for layer_name, layer_id in layers().items():
+        for start in range(0, num_records, batch_size):
+
             url = f'https://services-ap1.arcgis.com/9R0qvCUXav3QPG1F/arcgis/rest/services/ValidatedLandslides/FeatureServer/{layer_id}/query?where=1%3D1&outFields=*&outSR=4326&f=geojson&resultRecordCount={num_records}&resultOffset={start}'
         
             print(f"Fetching records {start} to {min(start + batch_size, num_records)} for layer {layer_name}...")
@@ -44,8 +45,8 @@ def fetch_data(output_dir, num_records=999999999, batch_size=2000):
             gdf = gpd.GeoDataFrame.from_features(geojson_data[layer_name]["features"])
             if not gdf.empty:
                 gdf.to_file(f"{output_dir}/inventory.gpkg", driver='GPKG', layer=layer_name, mode='a')
-                gdf.to_file(f"{output_dir}/inventory_{layer_name}.geojson", driver='GeoJSON')
+                gdf.to_file(f"{output_dir}/inventory_{layer_name}.geojson", driver='GeoJSON', mode='a')
             else:
                 print(f"No more records to fetch for layer {layer_name}.")
-                return None
+                break
     print("Data fetching completed.")
