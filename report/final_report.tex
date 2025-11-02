@@ -1,0 +1,398 @@
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+% The preceding line is only needed to identify funding in the first footnote. If that is unneeded, please comment it out.
+%Template version as of 6/27/2024
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{url}
+\usepackage[caption=false]{subfig}
+
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+
+\title{Landslide Susceptibility Mapping and Enhancement Using Deep Learning Techniques in the Auckland Region
+}
+
+\author{\IEEEauthorblockN{Nhut Hoang Duong}
+\IEEEauthorblockA{\textit{Faculty of Science} \\
+\textit{The University of Auckland}\\
+Auckland, New Zealand \\
+nduo221@aucklanduni.ac.nz}
+}
+
+\maketitle
+
+\begin{abstract}
+This report describes the work of exploring the potential of Machine Learning in (1) creating a Landslide Susceptibility Map; and (2) presented a Pipeline that can automatically enrich the Auckland Landslide Inventory by leveraging two Deep Learning methods that Monitor Change and detect landslides. The work is based on the prior report of the Auckland Council and is inspired to enhance and overcome its limitations. A discussion and Future development from experimental results is also proposed.
+\end{abstract}
+
+\begin{IEEEkeywords}
+landslide, susceptibility, landslide classification, change monitoring, deep learning, CNN.
+\end{IEEEkeywords}
+
+\section{Introduction}
+Among natural hazards, landslides are a common and extremely destructive
+disaster in New Zealand and Auckland. The common way to reduce the risk is to
+avoid building in areas with a higher risk of landslides. To proactively manage landslide risk,
+landslide susceptibility mapping (LSM) is an essential tool for planners
+and decision-makers. LSM is the process of determining the likelihood of
+landslide occurrence in a given area based on various factors such as topography,
+geology, land use, and climate. The map gives us the distribution of what could go
+wrong (susceptibility), instead of how often or when landslides will occur (hazard).
+
+The Auckland Council has developed an LSM for the Auckland region using a
+statistical approach \cite{AucklandLandslide2025} to manage the risk of landslides proactively.
+Their outcome encompasses both shallow and large-scale aspects.
+(Fig. \ref{fig:auck_council_lsms}) landslides. However, the statistical approach has
+some limitations, such as its reliance on historical data and the difficulty
+in capturing complex spatial patterns. Furthermore, current data from the Auckland
+Landslide Inventory \cite{AucklandCouncil2025ValidatedLandslides}
+(ALI) They are not comprehensive, affecting the accuracy and reliability of the LSMs.
+
+To overcome these limitations, this project aims to explore the use of deep learning
+techniques in two directions:
+\begin{itemize}
+\item Create shallow LSMs using Machine Learning (ML) algorithms. We will investigate both
+traditional ML models and Deep Learning (DL) techniques for this purpose.
+\item Propose a pipeline to enhance the current ALI data. Then we implement 02 AI models
+which apply state-of-the-art DL techniques for change segmentation and landslide
+detection using remote sensing satellite imagery.
+\end{itemize}
+
+\begin{figure}[htbp]
+\centering
+\subfloat[Shallow]{%
+  \includegraphics[width=0.48\linewidth]{data/shallow_susceptibility_map.png}\label{fig:shallow}}
+\hfil
+\subfloat[Large-scale]{%
+  \includegraphics[width=0.48\linewidth]{data/large_scale_landslide_susceptibility_map.png}\label{fig:large_scale}}
+\caption{Auckland Council Report - Large-scale landslide susceptibility map with inset maps showing Warkworth,
+Auckland region.}
+\label{fig:auck_council_lsms}
+\end{figure}
+
+\section{Landslide Susceptibility Mapping}
+
+\subsection{Data Preparation}
+
+\paragraph{Conditioning factors} Due to the complexity of
+the development of landslides, 596 different factors can contribute to the occurrence of landslides
+\cite{Reichenbach2018}. However, in reality, to collect and process all
+these factors is impractical and time-consuming. Therefore, 
+only significant contributions to landslide formation
+factors are commonly used, i.e., Topography, hydrology, geology,
+land cover, natural and human-related factors \cite{Liu2023}.
+
+
+In this project, we used the following factors:
+\begin{itemize}
+\item \textbf{Topographic} factors, with sub-factors
+\textit{slope} \cite{LandcareResearch2024LENZSlope},
+\textit{aspect}, \textit{plane curvature}, \textit{TWI} which can be 
+directly obtained by processing the \textit{digital elevation model (DEM)} \cite{LINZ2012DEM}.
+\item \textbf{Land cover} \cite{LandcareResearch2025LCDBv5}.
+\end{itemize}
+
+All factors are visualized in Fig. \ref{fig:auck_factors}.
+
+\begin{figure*}[htbp]
+\centering
+\subfloat[Slope]{%
+  \includegraphics[width=0.16\linewidth]{data/SLOPE.png}\label{fig:sub_slope}}
+\subfloat[TWI]{%
+  \includegraphics[width=0.16\linewidth]{data/TWI.png}\label{fig:sub_twi}}
+\subfloat[Plane Curvature]{%
+  \includegraphics[width=0.16\linewidth]{data/curvature.png}\label{fig:sub_curvature}}
+\subfloat[Aspects]{%
+  \includegraphics[width=0.16\linewidth]{data/ASPECTS.png}\label{fig:sub_aspects}}
+\subfloat[DEM]{%
+  \includegraphics[width=0.16\linewidth]{data/DEM.png}\label{fig:sub_dem}}
+\subfloat[Land Cover]{%
+  \includegraphics[width=0.16\linewidth]{data/LAND_COVER.png}\label{fig:sub_land_cover}}
+\caption{All conditioning factors used for landslide susceptibility mapping.}
+\label{fig:auck_factors}
+\end{figure*}
+
+\paragraph{Training Data Creation} is a combination of 
+ALI for the positive samples (landslide) and our randomly generated
+negative samples (non-landslide). 
+The total number of samples is 23,852 points,
+with 11,926 points for both positive and negative samples.
+Due to the computational limitations, 
+we reduce the training dataset size to 2,500 samples
+(1,250 positive and 1,250 negative samples).
+The map of all sample data
+distribution is shown in Fig. \ref{fig:distribution}.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=1\linewidth]{data/LANDSLIDES DISTRIBUTION.png}}
+\caption{Distribution of training samples in the Auckland region.}
+\label{fig:distribution}
+\end{figure}
+
+\subsection{Model Development}
+
+We aim to combine both traditional ML and DL techniques to create the LSMs and 
+The two popular methods in each category are Random Forest (RF) 
+and Convolutional Neural Network (CNN), respectively. 
+Details of the diagram of the workflow for all models are described in Fig. \ref{fig:lsm_models}.
+
+\paragraph{Random Forest}, we used an ensemble of 100 decision trees to make predictions. 
+Each tree is trained on a random subset of the training data and
+features from selected Conditioning factors. The final
+prediction is \verb|P_RF|.
+
+\paragraph{Convolutional Neural Network}, we extracted Sentinel-2 image from selected
+data points which contain six bands from the satellite imagery (\verb|B2|, \verb|B3|, \verb|B4|, \verb|B8|, \verb|B11|, \verb|B12|). To deal with the cloud, we filter a clear image, where the maximum percentage of cloud is 10\%.
+Then we trained a CNN model to classify landslide and non-landslide samples.
+Due to the small dataset size, the model architecture is relatively simple, with only
+03 convolutional layers (\verb|Conv2D(32, 3×3)| and \verb|Conv2D(64, 3×3)|), both are followed by a 
+\verb|MaxPool(2×2)| layer, and 02 fully connected layers. The model is trained 
+for 20 epochs with a batch size of 32 and optimized using the Adam optimizer 
+with a learning rate of 0.0001. All activation functions are \verb|ReLU|, 
+except for the output layer, which uses \verb|sigmoid| for classification probability.
+The final prediction is \verb|P_CNN|.
+
+\paragraph{Logistic Regression} is used to combine the predictions from the RF and CNN models.
+The input features for the logistic regression model include the predicted probabilities from both models, as well as the original conditioning factors. The final prediction is \verb|P_LR|.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=1\linewidth]{data/LSM_Models.png}}
+\caption{Models workflow for Landslide Susceptibility Mapping.}
+\label{fig:lsm_models}
+\end{figure}
+
+\subsection{Results and Evaluation}
+
+The RF outperforms the CNN model in terms of accuracy, 
+achieving a perfect score of 1.00 compared to the CNN's 0.9694
+ as shown in the Table. \ref{tab:lsm_models}.
+This is expected due to the small dataset size,
+which limits the CNN's ability to learn complex patterns.
+
+
+\begin{table}[htbp]
+\centering
+\caption{LSM Models Performance Comparison}
+\label{tab:lsm_models}
+\begin{tabular}{cc}
+\toprule
+\textbf{Model} & \textbf{Accuracy} \\
+\midrule
+RF & 1.00 \\
+CNN & 0.9694 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For the final result, the detailed report metrics
+also received a high score, which is almost 0.99,
+and are shown in the Table. \ref{tab:lsm_final_model_report}.
+The visualization of sample data is also shown in Fig. \ref{lsm_final}
+
+\begin{table}[htbp]
+\centering
+\caption{Classification Report Metrics}
+\label{tab:lsm_final_model_report}
+\begin{tabular}{lrrrr}
+\toprule
+ & \textbf{precision} & \textbf{recall} & \textbf{f1-score} & \textbf{support} \\
+\midrule
+0 & 1.00 & 0.97 & 0.99 & 37 \\
+1 & 0.98 & 1.00 & 0.99 & 40 \\
+\midrule
+accuracy & & & 0.99 & 77 \\
+macro avg & 0.99 & 0.99 & 0.99 & 77 \\
+weighted avg & 0.99 & 0.99 & 0.99 & 77 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=1\linewidth]{report/data/LANDSLIDE SUSCEPTIBILITY.png}}
+\caption{Final Landslide Susceptibility Map. High susceptibility: $>$ 0.5 probability; Moderate susceptibility: from 0.1 to 0.5 probability; Low susceptibility: $<$ 0.1 probability}
+\label{fig:lsm_final}
+\end{figure}
+
+The perfect classification report metrics for the RF model and the
+Other very high-performance metrics for the CNN model and LR also need 
+to be taken with caution, as it may indicate overfitting
+to the training data or a lack of generalization to unseen data, or
+a special issue with the randomly generated data points.
+
+\section{Automated Landslide Inventory Enhancement}
+
+In this section, we examine the application of deep learning techniques to improve the automated landslide inventory process. Utilizing the power of CNNs and other advanced architectures, our goal is to enhance the accuracy and efficiency of landslide detection and mapping.
+
+\subsection{Motivation}
+
+The work in this section is motivated by the quality of the current ALI, which plays a crucial role in the reliability of LSM, regardless of the methods employed. As described in the Table. \ref{tab:ali_desc}, the inventory clearly shows some significant limitations.
+
+\begin{itemize}
+\item \textbf{Data Bias} Most of the data points are collected from the Auckland Anniversary Storm in January 2023 and Cyclone Gabrielle only \cite{AucklandLandslide2025}. Therefore, it cannot reflect other kinds of triggers such as earthquakes, floods, or Deforestation.
+\item \textbf{Short collecting time}, the work started recently, from July 2022.
+\item \textbf{Outdated}, only 10 data points are collected after February 2023.
+\end{itemize}
+
+\begin{table}[htbp]
+\centering
+\caption{ALI events counting by Months}
+\label{tab:ali_desc}
+\begin{tabular}{rr}
+\toprule
+\textbf{year-month} & \textbf{counts} \\
+\midrule
+2022-07 & 2 \\
+2022-11 & 2 \\
+2023-01 & 2,765 \\
+2023-02 & 151,588 \\
+2023-08 & 5 \\
+2024-01 & 5 \\
+2025-01 & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Proposed Pipeline}
+
+As mentioned earlier, collecting data requires intensive labor and human resources. Therefore, we propose a pipeline that can be fully or semi-automatically (human-on-the-loop) to achieve the goal of enhancing the ALI with a reduced cost compared to human manual annotation.
+
+We suggest using remote sensing imagery as input data sources. In the project, we used Sentinel-2. The first element of the pipeline is \verb|Trigger| the \verb|Change Monitoring| model, which can be manually done by a human when \verb|Event Occurs | or \verb|Continuous|. If there is a change in the interested area, the second model \verb|Landslide Detection| will involve classifying whether the change is a landslide or not. If a landslide happens, the event will be added to the inventory or trigger a follow-up application, such as Alert. The flow chart of the pipeline is shown in Fig. \ref{fig:pipeline}.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=1\linewidth]{report/data/pipeline.png}}
+\caption{Proposed Flow for Landslide Inventory Enhancement}
+\label{fig:pipeline}
+\end{figure}
+
+\subsection{Models Implementation}
+
+Both models' implementations use GeoAI \cite{geoai} for fast creation. The Fast Creation library wraps other foundation models for easy usage. For further customization, we should implement these models directly. Moreover, because we want to obtain precise data from Sentinel-2, we must use a short image range, which increases the likelihood of cloud cover. We apply s2cloudless \cite{s2cloudless} for the cloud removal task.
+
+\paragraph{Change detection} The model is implemented by using Sentinel-2 imagery. We utilize the Segment Anything Model (SAM) \cite{kirillov2023segment} pre-trained model as the underlying model for segmentation, which is currently applicable to RGB images. Therefore, we limited the use of RGB bands from the image for demonstration purposes and reduced computational complexity. The version of SAM is ViT-H.
+
+\paragraph{Landslide Detection} The model is expected to follow the Change Detection model. The architecture is UNet \cite{unet} and the encoder model for feature extraction is ResNet34 \cite{resnet} with initial weights from ImageNet. We also limit the channel of image to three, which are the RGB bands, to reduce complexity. Due to data limitations, we expected to use ALI for fine-tuning or Transfer Learning purposes. Then, the model has to be pre-trained on another database. We decided to use Landslide4Sense 2022 \cite{Ghorbanzadeh2022}, which was also based on Sentinel-2 imagery, and its data were collected from similar geographical conditions to Auckland, including the Kodagu district (Coastline), Rasuwa (Ice-covered Mountains), Taitung, and Hokkaido (Island).
+
+\subsection{Results}
+
+Although SAM is a zero-shot segmentation model, its performance is sufficient for detecting changes in the Auckland image within the scope of this project, as it was pre-trained on a massive training set (ViT-H version). A demonstration result of the model is shown in Fig. \ref{fig:sam}. The model correctly detects the change mask with some noise and errors. However, we still have another model for the next step, and these noises can be evaluated and removed. We also cannot create the performance report for SAM, as we need to generate ground truth from ALI, which is time-consuming and falls outside the scope of this project.
+
+\begin{figure}[htbp]
+\centerline{\includegraphics[width=1\linewidth]{report/data/change_seg.png}}
+\caption{Change Segmentation of Landslide, using SAM with an Auckland imagery}
+\label{fig:sam}
+\end{figure}
+
+The original Landslide4Sense 2022 dataset contained many images with no annotations, making them difficult to interpret. To simplify the process, we utilize Landslide Segmentation \cite{BarmanKaggleLandslide}, a dataset derived from Landslide4Sense. This is a simplified version of the original dataset, cleaned to remove zero annotation masks. The total size of the dataset is 3,960 images.
+
+For the training process, we split the dataset into a \textit{training}/\textit{validation}  set (3,009/752 images - 80/20 ratio) and a \textit{test} set (199 images) for the evaluation report. The \textit{batch size} is 8, \textit{number of epochs} is 50, the \textit{learning rate} is 0.0005 and the \textit{early stopping patience} is 10 epochs. The training trajectory in Fig. \ref{fig:landslide_detection} with 42/50 epochs, early stopping, and the best \textit{IoU}: 0.7225. The performance of models during training progress has fluctuations, but the main direction of Training Loss and Validation Loss is still following a typical pattern: both are reducing through the epoch value.
+
+
+
+\begin{figure}[htbp]
+\centering
+\subfloat[Training Trajectory]{%
+  \includegraphics[width=1\linewidth]{report/data/training trajectory.png}\label{fig:sub_trajectory}}
+\hfil
+\subfloat[Sample from the Test set, Landslide4Sens]{%
+  \includegraphics[width=1\linewidth]{report/data/landslide_training.png}\label{fig:sub_training}}
+\hfil
+\subfloat[Real Auckland Data]{%
+  \includegraphics[width=1\linewidth]{data/landslide_detection.png}\label{fig:sub_detection}}
+\caption{Training result and Directly apply to Auckland imagery without Transfer Learning.}
+\label{fig:landslide_detection}
+\end{figure}
+
+The Evaluation Metrics for Landslide Detection at Table. \ref{tab:landslide_report} is conducted using 3,260,416 pixels from the \textit{test} set.
+
+\begin{table}[htbp]
+\centering
+\caption{Classification Report for Landslide Detection}
+\label{tab:landslide_report}
+\begin{tabular}{lrrrr}
+\toprule
+ & \textbf{precision} & \textbf{recall} & \textbf{f1-score} & \textbf{support} \\
+\midrule
+Non-Landslide & 0.98 & 0.99 & 0.99 & 3,109,595 \\
+Landslide & 0.72 & 0.66 & 0.69 & 150821 \\
+\midrule
+accuracy & & & 0.97 & 3260416 \\
+macro avg & 0.85 & 0.82 & 0.84 & 3,260,416 \\
+weighted avg & 0.97 & 0.97 & 0.97 & 3,260,416 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Evaluation Metrics for Landslide Detection}
+\label{tab:additional_metrics}
+\begin{tabular}{lr}
+\toprule
+\textbf{Metric} & \textbf{Value} \\
+\midrule
+Accuracy & 0.9726 \\
+Precision & 0.7226 \\
+Recall & 0.6617 \\
+F1-Score & 0.6908 \\
+IoU (Intersection over Union) & 0.5276 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Although the model had never seen the Auckland data before and was trained on data from far and different locations, it can still detect pixels in the core of the landslide area, which is a good sign for further enhancement.
+
+\section{Discussion and Future Work}
+
+Due to many constraints, we only focused on fundamental aspects; therefore, much future work can be done to enhance and overcome the set limitations. Machine Learning Perspective
+
+\subsection{Machine Learning Perspective}
+
+The LSM model utilized only a subset of the data, and the randomly generated sample was also limited in terms of diverse conditions and the number of data points. For greater confidence in its performance, better data preparation is needed to enhance both the quality and quantity of the data.
+
+The Landslide Detection model can utilize transfer learning or fine-tuning with the current ALI to enhance its performance, and we can also leverage the data to create ground truth for model evaluation. 
+
+All models are either simple due to small data or use default settings, which are not optimal for geographical data. For real-world implementation, we need to customize the model to tailor it to the specified usage purpose. 
+
+\subsection{Remote Sensing Knowledge Perspective}
+
+\paragraph{Band Properties} The models in the project, especially those enhancing ALI, primarily rely on deep learning features without incorporating knowledge from remote sensing band properties. Landslide areas may exhibit characteristic band patterns, which can be used to enhance the understanding of the models. Moreover, currently ALI Enhancement models only use 03 RGB bands, it should be use wider range of band to have a better feature understanding.
+
+\paragraph{Model Foundation Algorithms} Deep Learning is not always the best choice, especially when dealing with a lack of data. A hybrid approach that combines both deep learning and domain algorithms is suggested. For example, for change detection purposes, we can also use other methods that are particularly designed for the domain, such as the Multivariate Alteration Detection (MAD) transformation in Multispectral, Bitemporal Image Data  \cite{NIELSEN19981}.
+
+\paragraph{More sources of data} LiDAR, or SAR from Sentinel-1, can combine with Sentinel-2 multispectral data to enrich the features of the models by gaining more knowledge dimensions that models can observe by using a variety of source types. Moreover, Sentinel-2 has a five-day revisit time, which can slow down and interrupt the collection process, especially in the Auckland region, where cloud coverage is typically high. We can utilize imagery from the Landsat family to enhance the system's collection and response speed. Beside that, for LSM, there are many more important conditioning factors can be used for increase the reability of the map.
+
+
+\section{Code and Experiment Reproduce Instruction}
+
+All source code is separate, but linked repositories:
+
+\paragraph{Landslide Susceptibility Mapping} The url of the repo is \url{https://github.com/sisn749/Landslide_Susceptibility_GEOG761} with the main Python notebook that contain all models is \verb|Ensemble_model.ipynb|. The notebook mainly focus to run on Google Colab and looking for Google Drive permission for file access by default.
+
+\paragraph{Auckland Landslide Inventory Enhancement} The url of the repo is \url{https://github.com/dhnhut/Landslide-DeepLearning}. To be able to reproduce, it need to run the following notebook in order.
+\begin{itemize}
+\item \verb|0-data-fetching.ipynb| fetch all data from ALI.
+\item \verb|1-data-processing.ipynb| preprocessed/clean data.
+\item \verb|2-events-explore.ipynb| fetch sentinel-2 imagery before and after landslide events and apply cloud removal.
+\item \verb|3-landslide-segmentation-CNN.ipynb| Pre-train the Landslide Detection model and apply to Auckland data
+\item \verb|4-pre-change-detection.ipynb| data preparation for Change Segmentation, fetching pre-event imagery.
+\item \verb|5-change-detection.ipynb| Apply Change Segmentation model on Auckland region.
+\end{itemize}
+
+
+\section{Conclusion}
+
+In this project, we implement two separate approaches but support each other to achieve better results.
+The first is that we demonstrate the effectiveness of using Machine Learning in producing LSM, which encompasses both traditional and Deep Learning methods, specifically RF and CNN. The second is that we propose a full-cycle pipeline that can automatically work with two additional state-of-the-art models: Change Segmentation and Landslide Classification. Due to numerous limitations imposed by data, computational capacity, and time constraints, the work aims to provide a proof of concept and experimental results. We also propose future work if we can have more resources.
+
+\bibliographystyle{IEEEtran}
+\bibliography{final_report}
+
+\end{document}
